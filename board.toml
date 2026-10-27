@@ -46,7 +46,6 @@ archives = [
   "build-native-virtio-bindings.py --component NativeRamBlock --directory build/native-ram-block",
   "build-native-virtio-bindings.py --component NativeVirtioBlock",
   "build-mockfs-fixture.py",
-  "build-boot-progress.py",
   "build-libpthread-kernel.py",
   "build-arm-driver.py NativeAdreno",
   "build-native-adreno-kits.py",
