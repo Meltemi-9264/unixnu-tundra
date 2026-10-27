@@ -1,0 +1,15 @@
+# Firmware-side boot manager config shipped in the payload volume.
+# The unixnu payload step rewrites this file from board.toml [payload]; this copy is
+# the firmware-volume fallback (used when no payload volume is present) and only
+# contains entries that exist without the payload: the menu itself and a way out.
+version = 1
+
+[boot]
+timeout = 3
+default = "exit"
+
+[[entry]]
+id = "exit"
+title = "Return to firmware"
+type = "action"
+action = "exit"

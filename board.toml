@@ -1,0 +1,186 @@
+# Board description of the Motorola moto s30 pro (tundra, SM8350), read by the unixnu build driver.
+#
+# Hardware facts: ../haydn/FACTS.md (stock DT analysis) and ../haydn/M1.md-M3.md (live measurements).
+# UEFI firmware: ../uefi-haydn (Platforms/Xiaomi/haydnPkg, derived from the venus port -- same SoC).
+#
+# Identity note: the iPhone X userland (d22ap, iOS 16.7.16) does NOT fit the UniXNU kernel line:
+# the base is xnu-10063.141.1 (iOS 17) and NativePrelink binds the native kernel to the original
+# kernelcache of the same restore image. iPhone X tops out at iOS 16.7.x. The board therefore
+# boots the iPad7,1 iPadOS 17.7.11 userland (the unchanged, proven sheng image). The SWEET
+# fork (16K pages, HFS+ root, iPhone X userland) is the sibling path in ../repo and ../haydn.
+
+[board]
+name = "tundra"
+soc = "SM8350"
+description = "Motorola moto s30 pro (tundra)"
+kit = "tundra"                      # the package/ of this repository appears as kits/haydn in the build tree
+
+# Target restore image: iPad7,1 iPadOS 17.7.11 (same as sheng; --ipsw PATH may point at a local copy).
+[ipsw]
+url = "https://updates.cdn-apple.com/2025SpringFCS/fullrestores/122-77166/DCA6CFE8-90E9-4B92-880D-3DE171798E40/iPad_Pro_HFR_17.7.11_21H461_Restore.ipsw"
+product = "iPad7,1"
+version = "17.7.11"
+build = "21H461"
+device_class = "j120ap"
+chip_id = 0x8011
+board_id = 12
+fetch = ["KernelCache", "DeviceTree", "StaticTrustCache", "Cryptex1,SystemTrustCache"]
+
+# Pins recorded by sheng (identical members byte for byte in the same IPSW):
+[ipsw.sha256]
+"044-76040-038.dmg" = "3f99b859c9728379110b66657c7b15285bcb1925ad8b5726542e2cdcf8b1028d"
+"044-76034-038.dmg" = "b4908cde41d23e6bc05e6af51a2c9eeb00cf0f863a6a18b1600c96a3fd70414f"
+
+[kernel]
+defconfig = "tundra_defconfig"
+archives = [
+  "build-corecrypto-14.py",
+  "build-corecrypto-14.py --namespace",
+  "build-arm-driver.py ArmDTPlatform",
+  "build-arm-driver.py ArmCpu",
+  "build-arm-driver.py NativeAES",
+  "build-native-aes-bindings.py",
+  "build-arm-driver.py NativeUfs",
+  "build-arm-driver.py NativeVirtioBlock",
+  "build-arm-driver.py NativeRamBlock",
+  "build-native-virtio-bindings.py --component NativeRamBlock --directory build/native-ram-block",
+  "build-native-virtio-bindings.py --component NativeVirtioBlock",
+  "build-mockfs-fixture.py",
+  "build-boot-progress.py",
+  "build-libpthread-kernel.py",
+  "build-arm-driver.py NativeAdreno",
+  "build-native-adreno-kits.py",
+  "build-native-adreno-accelerator.py",
+  "build-native-legacy-display.py",
+]
+
+[kernel.prelink]
+tool = "kits/NativePrelink/emit_prelink.py"
+kernel = "build/xnu/ios-obj/DEVELOPMENT_ARM64_BCM2837/mach.development.bcm2837.unstripped.noctf"
+# Same 17.7.11 kernelcache as sheng: its hash is pinned upstream (re-check against your download).
+kernelcache_sha256 = "f18b4df865405f2a287b84977d7aca745e056d656d9fc9df1662970ce2969de7"
+slide = "-0x1000000"
+early_security_init = "com.apple.driver.AppleMobileFileIntegrity=0xfffffff005ab4ae0"
+roots = [
+  "com.apple.AppleFSCompression.AppleFSCompressionTypeZlib",
+  "com.apple.driver.AppleARMPlatform",
+  "com.apple.driver.AppleARMWatchdogTimer",
+  "com.apple.driver.AppleAudioClockLibs",
+  "com.apple.driver.AppleEffaceableStorage",
+  "com.apple.driver.AppleIISController",
+  "com.apple.driver.AppleM2ScalerCSCDriver",
+  "com.apple.driver.AppleMobileFileIntegrity",
+  "com.apple.driver.ApplePMGR",
+  "com.apple.driver.IODARTFamily",
+  "com.apple.filesystems.apfs",
+  "com.apple.iokit.CoreAnalyticsFamily",
+  "com.apple.iokit.IOAVFamily",
+  "com.apple.iokit.IOAudio2Family",
+  "com.apple.iokit.IOCECFamily",
+  "com.apple.iokit.IOCryptoAcceleratorFamily",
+  "com.apple.iokit.IOGPUFamily",
+  "com.apple.iokit.IOHDCPFamily",
+  "com.apple.iokit.IOMobileGraphicsFamily",
+  "com.apple.iokit.IOReportFamily",
+  "com.apple.iokit.IOSlowAdaptiveClockingFamily",
+  "com.apple.iokit.IOStorageFamily",
+  "com.apple.iokit.IOSurface",
+  "com.apple.kec.Libm",
+  "com.apple.kec.corecrypto",
+  "com.apple.kext.AppleMatch",
+  "com.apple.kext.CoreTrust",
+  "com.apple.security.AppleImage4",
+  "com.apple.security.sandbox",
+  "com.apple.iokit.IOHIDFamily",
+  "com.apple.iokit.IOHIDEventDriver",
+]
+
+[firmware]
+config = "haydn"                   # Resources/Configs/haydn.toml in the --uefi checkout
+dsc = "Platforms/Xiaomi/haydnPkg/haydn.dsc"
+fd = "Build/haydnPkg/{target}_CLANGPDB/FV/SILICIUM_UEFI.fd"
+preflight = ["scripts/check-haydn.py"]
+submodules = []                    # the uefi-haydn checkout carries its trees locally
+patches = ["Resources/MuPatches/Gic-Spurious.patch"]
+packages = [
+  "{uefi}",
+  "{uefi}/Platforms/Xiaomi",
+  "{tree}/package",
+  "{tree}/drivers/DarwinBoot",
+  "{edk2}",
+  "{uefi}/Common/Mu",
+  "{uefi}/Common/Mu_OEM_Sample",
+  "{uefi}/Silicon/Qualcomm",
+  "{uefi}/Silicon/Silicium",
+  "{uefi}/Silicium-ACPI",
+  "{uefi}/Silicium-ACPI/Platforms/Xiaomi",
+  "{uefi}/Silicium-ACPI/Silicon/Qualcomm",
+]
+
+[firmware.defines]
+ENABLE_SECUREBOOT = "0"
+DEVICE_MODEL = "haydn"
+MEMORY_PROTECTION = "TRUE"
+SHIP_MODE = "FALSE"
+BUILDID_STRING = "haydn-research"
+
+# haydn's stock boot image is header v3 (vendor_boot), but the ABL accepts a v2 container
+# (measured: fastboot boot is a no-op; flash boot of a v2 Ubuntu-style image works -- M1.md).
+# The UEFI boot image itself follows venus (same SoC): header v1 at pages of 4096.
+[bootimg.image]
+base = 0x0
+kernel_offset = 0x00008000
+tags_offset = 0x01e00000
+pagesize = 4096
+header_version = 1
+
+# Stock ABL powers the panel off when the appended DTB has no splash region (sheng rule).
+# Unlike sheng's mainline source DT, haydn's appended tree IS the merged stock DT
+# (base-00 + dtbo-10) and already carries /reserved-memory/splash_region with label
+# cont_splash_region and reg <0 0xdfc00000 0 0x2300000> -- verified by fdtget and by
+# M1 (PAR fb translated at 0xdfc00000, text on screen). No [[bootimg.dtb_node]] is
+# needed; adding one fails with FDT_ERR_EXISTS. If the board DT is ever replaced by a
+# mainline one, restore the node with those exact values.
+
+# First bring-up payload: the FAT volume with the config, kernel and ADT.
+# panic_screen stays false: scripts/patch-xnu-entry-probe.py is not present in the pinned
+# UniXNU checkout (upstream gap), and its offsets target the sheng baseline kernel only.
+[payload]
+volume = "TUNDRAESP"
+size_mib = 192
+loader = "firmware"
+title = "tundra first boot: source 4K XNU to console"
+dram_size = "0x180000000"           # 0x80000000..0x2_00000000 on the 8 GB board; verify live FDT
+panic_screen = false
+timeout = 3
+kernel_args = [
+  "-v",
+  "serial=3",
+  "debug=0x14e",
+  "boot-diag-resume=0",
+]
+
+[payload.adt]
+tool = "scripts/make-tundra-adt.py"
+chip_id = "207"                     # A10X identity, matching the iPad7,1 userland
+owned_memory_size = "0x100000000"   # DarwinBoot contiguous window request: 4 GiB, a conservative
+                                    # bring-up value well under the 6 GiB dram above 0x80000000;
+                                    # raising it risks a fragmented UEFI map refusing one contiguous
+                                    # block, so tune up only after the first boots are proven.
+cpu_regs = "0,0x100,0x200,0x300,0x400,0x500,0x600,0x700"   # haydn MPIDRs (FACTS.md)
+psci_method = "smc"                 # M1: PSCI 1.1 via SMC, SMCCC 1.1
+ipad_identity = true
+unique_chip_id = "optional"         # bring-up does not need the SE seed
+# root_match_volume_uuid: set after the userdata image is built (its OS window UUID).
+# packed_data_ramdisk: set when a Data seed is passed with --data-ramdisk.
+
+# userdata GPT entry measured on the phone by the shim (M3.md 2026-10-19 20:05):
+# userdata = 0x2A8000..0x3AFAFBA in 4096-byte blocks (~230 GiB partition).
+[userdata]
+first_lba = 0x2a8000
+last_lba = 0x3afafba
+lba_bytes = 4096
+windows = [
+  { name = "OS", component = "OS" },
+  { name = "SystemOS", component = "Cryptex1,SystemOS" },
+]
